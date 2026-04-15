@@ -81,8 +81,17 @@ fi
 # ============================================================
 info "Installing system packages..."
 apt-get update -qq || fail "apt-get update failed"
-apt-get install -y python3 python3-venv python3-pip git curl ca-certificates gnupg sudo ffmpeg 2>&1 | tail -3
+apt-get install -y python3 python3-venv python3-pip git curl ca-certificates gnupg sudo 2>&1 | tail -3
 info "System packages installed"
+
+# ffmpeg is needed for voice transcription (OGG -> WAV)
+# On some systems (Raspberry Pi, custom repos) it may fail — that's OK, voice is optional
+info "Trying to install ffmpeg (needed for voice messages)..."
+if apt-get install -y ffmpeg 2>&1 | tail -3; then
+    info "ffmpeg installed"
+else
+    warn "ffmpeg not installed — voice messages will not work. This is OK."
+fi
 
 
 # ============================================================

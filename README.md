@@ -22,7 +22,7 @@
 ### Установка одной командой
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/a-prs/QwenClaw/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
+curl -fsSL https://raw.githubusercontent.com/developer3000S/QwenClaw/refs/heads/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
 Установщик:
