@@ -1,69 +1,69 @@
-## Bot Core
-bot/main.py                    — Telegram bot: aiogram 3.x, handlers, keyboards, session management
-  :cmd_start()                 — /start greeting with voice status
-  :cmd_menu()                  — /menu control panel
-  :cmd_new()                   — /new force new session
-  :cmd_sessions()              — /sessions list
-  :cmd_status()                — /status system info
-  :cmd_setup()                 — /setup configure Groq key via chat
-  :cmd_update()                — /update self-update from GitHub + restart
-  :handle_message()            — Main handler: extract text -> route -> run qwen
-  :on_result()                 — Callback when Qwen finishes: send result to Telegram
-  :extract_text()              — Text/voice/caption extraction
-  :build_main_menu()           — Inline keyboard: sessions, new, status, close all
-  :build_sessions_keyboard()   — Paginated session list with switch/close buttons
-  NOTE: Buttons on responses use edit_text which replaces the answer — needs fix
+## Ядро бота
+bot/main.py                    — Telegram-бот: aiogram 3.x, обработчики, клавиатуры, управление сессиями
+  :cmd_start()                 — Приветствие /start со статусом голоса
+  :cmd_menu()                  — Панель управления /menu
+  :cmd_new()                   — /new принудительно новая сессия
+  :cmd_sessions()              — /sessions список сессий
+  :cmd_status()                — /status информация о системе
+  :cmd_setup()                 — /setup настройка VOSK SERVER через чат
+  :cmd_update()                — /update самообновление с GitHub + перезапуск
+  :handle_message()            — Главный обработчик: извлечение текста -> маршрутизация -> запуск qwen
+  :on_result()                 — Обратный вызов по завершении Qwen: отправка результата в Telegram
+  :extract_text()              — Извлечение текста/голоса/подписи
+  :build_main_menu()           — Встроенная клавиатура: сессии, новая, статус, закрыть все
+  :build_sessions_keyboard()   — Постраничный список сессий с кнопками переключения/закрытия
+  ПРИМЕЧАНИЕ: Кнопки на ответах используют edit_text, который заменяет ответ — требует исправления
 
-bot/qwen_runner.py             — Qwen Code CLI subprocess runner
-  :run_qwen()                  — Public API: queue or launch qwen
-  :_process_prompt()           — Execute + drain queue
-  :_execute_qwen()             — Build cmd, subprocess, parse JSON
-  :_parse_output()             — Parse Qwen JSON array [{type:result}]
-  NOTE: Qwen outputs JSON array, NOT line-by-line like Claude
-  NOTE: --max-turns NOT supported by Qwen CLI
-  NOTE: --auth-type qwen-oauth required for every call
+bot/qwen_runner.py             — Запуск Qwen Code CLI как подпроцесс
+  :run_qwen()                  — Публичный API: очередь или запуск qwen
+  :_process_prompt()           — Выполнение + осушение очереди
+  :_execute_qwen()             — Формирование команды, подпроцесс, парсинг JSON
+  :_parse_output()             — Парсинг JSON-массива Qwen [{type:result}]
+  ПРИМЕЧАНИЕ: Qwen выводит JSON-массив, НЕ построчно как Claude
+  ПРИМЕЧАНИЕ: --max-turns НЕ поддерживается Qwen CLI
+  ПРИМЕЧАНИЕ: --auth-type qwen-oauth требуется для каждого вызова
 
-bot/config.py                  — .env loader + dynamic config update
-  :set_env_var()               — Write key=value to .env file
-  :reload_groq_key()           — Hot-reload GROQ_API_KEY without restart
+bot/config.py                  — Загрузчик .env + динамическое обновление конфига
+  :set_env_var()               — Запись key=value в файл .env
+  :reload_vosk_config()        — Горячая перезагрузка VOSK_SERVER config без перезапуска
 
-bot/db.py                      — SQLite: sessions + message history
-  :init_db()                   — Schema versioning via PRAGMA user_version
+bot/db.py                      — SQLite: сессии + история сообщений
+  :init_db()                   — Версионирование схемы через PRAGMA user_version
   :create_session()            — INSERT OR IGNORE
-  :get_active_sessions()       — Non-done, within timeout window
+  :get_active_sessions()       — Не завершённые, в пределах таймаута
 
-bot/formatting.py              — Markdown -> Telegram HTML converter
-  :md_to_telegram_html()       — Extracts code blocks first, escapes HTML, converts bold/italic/links
-  :split_message()             — Split >4000 char messages at newlines
-  NOTE: Falls back to plain text on TelegramBadRequest
+bot/formatting.py              — Конвертер Markdown -> Telegram HTML
+  :md_to_telegram_html()       — Сначала извлекает блоки кода, экранирует HTML, конвертирует жирный/курсив/ссылки
+  :split_message()             — Разбиение сообщений >4000 символов по переводам строки
+  ПРИМЕЧАНИЕ: При TelegramBadRequest возвращается plain text
 
-bot/voice.py                   — Groq Whisper API transcription
-  :transcribe_voice()          — Download .ogg from TG, POST to Groq, return text
-  NOTE: Language hardcoded "ru"
+bot/voice.py                   — Транскрипция через VOSK SERVER
+  :transcribe_voice()          — Загрузка .ogg из TG, конвертация ffmpeg, POST в VOSK SERVER
+  ПРИМЕЧАНИЕ: Требуется ffmpeg для конвертации OGG→WAV 16kHz
 
-bot/scheduler.py               — Cron-like scheduler reading workspace/schedules.json
-  :run_scheduler()             — asyncio loop, checks every 30s
-  :_cron_matches()             — 5-field cron parser (min hour day month weekday)
-  :get_due_tasks()             — Find tasks matching current time
-  NOTE: Qwen writes schedules.json via QWEN.md instructions
+bot/scheduler.py               — Планировщик наподобие cron, читает workspace/schedules.json
+  :run_scheduler()             — Цикл asyncio, проверка каждые 30с
+  :_cron_matches()             — Парсер cron из 5 полей (минута час день месяц день_недели)
+  :get_due_tasks()             — Поиск задач, совпадающих с текущим временем
+  ПРИМЕЧАНИЕ: Qwen записывает schedules.json по инструкциям из QWEN.md
 
-## Workspace
-workspace/QWEN.md              — Identity + instructions for Qwen Code (read on every launch)
-workspace/.qwen/skills/schedule/SKILL.md — Schedule skill for natural language cron
+## Рабочая область
+workspace/QWEN.md              — Идентичность + инструкции для Qwen Code (читается при каждом запуске)
+workspace/.qwen/skills/schedule/SKILL.md — Навык планирования для cron на естественном языке
 
-## Deploy
-install.sh                     — One-command installer for Ubuntu/Debian VPS
-  NOTE: Detects pipe (curl|bash) and tells user to download first
-  NOTE: Uses `qwen auth qwen-oauth` (not `auth login --auth-type`)
-  NOTE: .gitattributes forces LF for .sh files (Windows CRLF breaks bash)
-qwenbot.service                — systemd unit with sandbox (ProtectSystem, ProtectHome)
-  NOTE: HOME=/opt/qwenbot set explicitly for Qwen credential access
-.env.example                   — Template
+## Развёртывание
+install.sh                     — Установщик одной командой для Ubuntu/Debian VPS
+  ПРИМЕЧАНИЕ: Обнаруживает pipe (curl|bash) и просит пользователя сначала скачать
+  ПРИМЕЧАНИЕ: Использует `qwen auth qwen-oauth` (не `auth login --auth-type`)
+  ПРИМЕЧАНИЕ: .gitattributes принудительно LF для .sh файлов (Windows CRLF ломает bash)
+qwenbot.service                — systemd unit с песочницей (ProtectSystem, ProtectHome)
+  ПРИМЕЧАНИЕ: HOME=/opt/qwenbot установлен явно для доступа к учётным данным Qwen
+.env.example                   — Шаблон
 
-## Key Decisions
-- Qwen Code CLI as backend (free 1000 req/day, headless via --auth-type qwen-oauth)
-- Groq Whisper API for voice (not local faster-whisper — avoids 3GB model download)
-- In-memory message queue (not SQLite — single-user bot, 5 msg max)
-- HTML parse_mode (not Markdown — fewer escaping issues in Telegram)
-- Scheduler reads schedules.json that Qwen itself writes (natural language cron)
-- Dedicated qwenbot system user (not root) with systemd sandbox
+## Ключевые решения
+- Qwen Code CLI как бэкенд (бесплатно 1000 запросов/день, headless через --auth-type qwen-oauth)
+- VOSK SERVER для голоса (локальное распознавание речи через ffmpeg)
+- Очередь сообщений в памяти (не SQLite — одно-пользовательский бот, макс 5 сообщ.)
+- HTML parse_mode (не Markdown — меньше проблем с экранированием в Telegram)
+- Планировщик читает schedules.json, который Qwen сам записывает (cron на естественном языке)
+- Выделенный системный пользователь qwenbot (не root) с песочницей systemd

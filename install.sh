@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # QwenClaw Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/a-prs/QwenClaw/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/developer3000S/QwenClaw/refs/heads/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 # NOTE: Do NOT pipe (curl|bash) — interactive prompts require terminal stdin
 
 INSTALL_DIR="/opt/qwenbot"
-REPO_URL="https://github.com/a-prs/QwenClaw.git"
+REPO_URL="https://github.com/developer3000S/QwenClaw.git"
 SERVICE_NAME="qwenbot"
 NODE_MIN_VERSION=18
-SELF_URL="https://raw.githubusercontent.com/a-prs/QwenClaw/main/install.sh"
+SELF_URL="https://raw.githubusercontent.com/developer3000S/QwenClaw/refs/heads/main/install.sh"
 
 # Colors
 GREEN='\033[0;32m'
@@ -81,7 +81,7 @@ fi
 # ============================================================
 info "Installing system packages..."
 apt-get update -qq || fail "apt-get update failed"
-apt-get install -y python3 python3-venv python3-pip git curl ca-certificates gnupg sudo 2>&1 | tail -3
+apt-get install -y python3 python3-venv python3-pip git curl ca-certificates gnupg sudo ffmpeg 2>&1 | tail -3
 info "System packages installed"
 
 
@@ -266,17 +266,32 @@ else
 
     echo ""
 
-    echo "  Step 3 (optional): Groq API Key for voice messages"
-    echo "  Free key: https://console.groq.com/keys"
-    echo "  Press Enter to skip"
+    echo "  Step 3 (optional): VOSK SERVER for voice messages"
+    echo "  If you have a local VOSK SERVER running,"
+    echo "  enter host:port (e.g. 127.0.0.1:2700)"
+    echo "  Press Enter to skip (use defaults later)"
     echo ""
-    read -p "  Groq API key: " GROQ_KEY
+    read -p "  VOSK SERVER (host:port): " VOSK_ADDR
+
+    VOSK_HOST=""
+    VOSK_PORT=""
+    if [[ -n "$VOSK_ADDR" && "$VOSK_ADDR" == *:* ]]; then
+        VOSK_HOST="${VOSK_ADDR%:*}"
+        VOSK_PORT="${VOSK_ADDR#*:}"
+    elif [[ -n "$VOSK_ADDR" ]]; then
+        VOSK_HOST="$VOSK_ADDR"
+        VOSK_PORT="2700"
+    fi
 
     cat > "$INSTALL_DIR/.env" << ENVEOF
 TELEGRAM_BOT_TOKEN=$BOT_TOKEN
 TELEGRAM_CHAT_ID=$CHAT_ID
-GROQ_API_KEY=$GROQ_KEY
 ENVEOF
+
+    if [[ -n "$VOSK_HOST" ]]; then
+        echo "VOSK_SERVER_HOST=$VOSK_HOST" >> "$INSTALL_DIR/.env"
+        echo "VOSK_SERVER_PORT=$VOSK_PORT" >> "$INSTALL_DIR/.env"
+    fi
 
     chmod 600 "$INSTALL_DIR/.env"
     info "Config saved to $INSTALL_DIR/.env"
@@ -375,7 +390,12 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo ""
     echo "  Update from Telegram: /update"
     echo ""
-    if [[ -z "$GROQ_KEY" ]]; then
+
+    # Check if VOSK is configured
+    if grep -q "VOSK_SERVER_HOST" "$INSTALL_DIR/.env" 2>/dev/null; then
+        echo "  Voice: enabled (VOSK SERVER)"
+        echo ""
+    else
         echo "  Voice: disabled (add via /setup in Telegram)"
         echo ""
     fi

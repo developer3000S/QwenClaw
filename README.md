@@ -1,110 +1,114 @@
 # QwenBot
 
-Personal AI assistant in Telegram, powered by Qwen Code.
+Персональный AI-ассистент в Telegram на базе Qwen Code.
 
-**Free**: 1000 requests/day, no subscriptions.
+**Бесплатно**: 1000 запросов/день, без подписок.
 
-## What it does
+## Что умеет
 
-- Chat with Qwen Code AI through Telegram
-- Session management (create, switch, close)
-- Voice messages (via Groq Whisper API, optional)
-- HTML formatting for code blocks and structured responses
-- Auto-start via systemd
+- Общение с Qwen Code AI через Telegram
+- Управление сессиями (создание, переключение, закрытие)
+- Голосовые сообщения (через VOSK SERVER, опционально)
+- HTML-форматирование для блоков кода и структурированных ответов
+- Автозапуск через systemd
 
-## Install (3 steps)
+## Установка (3 шага)
 
-### Prerequisites
-- Ubuntu/Debian VPS
-- Telegram bot token from [@BotFather](https://t.me/BotFather)
-- Your Chat ID from [@userinfobot](https://t.me/userinfobot)
+### Требования
+- VPS на Ubuntu/Debian
+- Токен бота Telegram от [@BotFather](https://t.me/BotFather)
+- Ваш Chat ID от [@userinfobot](https://t.me/userinfobot)
 
-### One-line install
+### Установка одной командой
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/a-prs/QwenClaw/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
-The installer will:
-1. Install Node.js, Python, Qwen Code CLI
-2. Ask for your Telegram bot token and chat ID
-3. (Optional) Ask for Groq API key for voice messages
-4. Authorize Qwen Code
-5. Set up and start the bot
+Установщик:
+1. Установит Node.js, Python, Qwen Code CLI
+2. Запросит токен бота Telegram и Chat ID
+3. (Опционально) Настроит VOSK SERVER для голосовых сообщений
+4. Авторизует Qwen Code
+5. Настроит и запустит бота
 
-### Voice messages (optional)
+### Голосовые сообщения (опционально)
 
-Get a free API key at [console.groq.com/keys](https://console.groq.com/keys) and enter it during install,
-or add later to `/opt/qwenbot/.env`:
+Для локального распознавания речи используется VOSK SERVER.
+
+Убедитесь что VOSK SERVER запущен на вашем сервере (по умолчанию на `127.0.0.1:2700`),
+или настройте через `/setup` в боте:
 
 ```
-GROQ_API_KEY=gsk_your_key_here
+VOSK_SERVER_HOST=127.0.0.1
+VOSK_SERVER_PORT=2700
 ```
 
-Then restart: `systemctl restart qwenbot`
+Затем перезапустите: `systemctl restart qwenbot`
 
-## Usage
+## Использование
 
-Just send a message to your bot in Telegram.
+Просто отправьте сообщение вашему боту в Telegram.
 
-**Commands:**
-- `/menu` — control panel
-- `/new` — start new session
-- `/sessions` — list sessions
-- `/status` — system status
+**Команды:**
+- `/menu` — панель управления
+- `/new` — начать новую сессию
+- `/sessions` — список сессий
+- `/status` — статус системы
 
-**Inline buttons** for switching sessions, closing, and navigation.
+**Встроенные кнопки** для переключения сессий, закрытия и навигации.
 
-## Update
+## Обновление
 
 ```bash
 cd /opt/qwenbot && git pull && systemctl restart qwenbot
 ```
 
-## Manage
+## Управление
 
 ```bash
-systemctl status qwenbot     # check status
-systemctl restart qwenbot    # restart
-journalctl -u qwenbot -f     # view logs
+systemctl status qwenbot     # проверить статус
+systemctl restart qwenbot    # перезапустить
+journalctl -u qwenbot -f     # просмотр логов
 ```
 
-## Configuration
+## Конфигурация
 
-Edit `/opt/qwenbot/.env`:
+Отредактируйте `/opt/qwenbot/.env`:
 
-| Variable | Required | Description |
+| Переменная | Обязательная | Описание |
 |---|---|---|
-| `TELEGRAM_BOT_TOKEN` | yes | Bot token from @BotFather |
-| `TELEGRAM_CHAT_ID` | yes | Your Telegram user ID |
-| `GROQ_API_KEY` | no | For voice messages |
-| `QWEN_MAX_TURNS` | no | Max AI iterations (default: 15) |
-| `QWEN_TIMEOUT` | no | Timeout in seconds (default: 600) |
+| `TELEGRAM_BOT_TOKEN` | да | Токен бота от @BotFather |
+| `TELEGRAM_CHAT_ID` | да | ID вашего пользователя Telegram |
+| `VOSK_SERVER_HOST` | нет | Хост VOSK SERVER для голосовых |
+| `VOSK_SERVER_PORT` | нет | Порт VOSK SERVER (по умолчанию: 2700) |
+| `QWEN_MAX_TURNS` | нет | Макс. итераций AI (по умолчанию: 15) |
+| `QWEN_TIMEOUT` | нет | Таймаут в секундах (по умолчанию: 600) |
 
-## Architecture
+## Архитектура
 
 ```
 GitHub: https://github.com/a-prs/QwenClaw
 
 /opt/qwenbot/
   bot/
-    main.py          — Telegram bot (aiogram 3.x)
-    qwen_runner.py   — Qwen Code CLI subprocess runner
-    voice.py         — Groq Whisper API for voice
-    formatting.py    — Markdown to Telegram HTML
-    config.py        — .env loader
-    db.py            — SQLite sessions & history
-  workspace/         — Qwen Code working directory
-  data/              — SQLite database
-  .env               — configuration
+    main.py          — Telegram-бот (aiogram 3.x)
+    qwen_runner.py   — Запуск Qwen Code CLI как подпроцесс
+    voice.py         — VOSK SERVER для голоса
+    formatting.py    — Markdown в Telegram HTML
+    config.py        — загрузчик .env
+    db.py            — SQLite: сессии и история
+  workspace/         — Рабочая директория Qwen Code
+  data/              — База данных SQLite
+  .env               — конфигурация
 ```
 
-## Security
+## Безопасность
 
-- Single-user: only your Chat ID can interact
-- Runs as dedicated `qwenbot` system user (not root)
-- systemd sandbox: ProtectSystem, ProtectHome, NoNewPrivileges
+- Один пользователь: только ваш Chat ID может взаимодействовать
+- Работает от системного пользователя `qwenbot` (не root)
+- Песочница systemd: ProtectSystem, ProtectHome, NoNewPrivileges
 
-## License
+## Лицензия
 
 MIT

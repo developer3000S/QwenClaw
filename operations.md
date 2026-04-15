@@ -1,49 +1,49 @@
-# QwenClaw — Operations Log
+# QwenClaw — Журнал операций
 
-## What is this
-Personal AI assistant in Telegram powered by Qwen Code CLI.
-One-command installer for Ubuntu/Debian VPS. Free (1000 req/day).
+## Что это
+Персональный AI-ассистент в Telegram на базе Qwen Code CLI.
+Установщик одной командой для Ubuntu/Debian VPS. Бесплатно (1000 запросов/день).
 GitHub: https://github.com/a-prs/QwenClaw
 
-## Current state (2026-04-13)
-- Bot works end-to-end: text messages, voice (Groq), sessions, inline buttons
-- Tested on clean Ubuntu 24.04 VPS (1 vCPU, 1GB RAM)
-- Installer handles: Node.js 20, Qwen CLI, Python venv, systemd, OAuth
-- Self-update via /update command (git pull + restart from Telegram)
-- Self-configure voice via /setup command (Groq API key via chat)
+## Текущее состояние (2026-04-13)
+- Бот работает end-to-end: текстовые сообщения, голос (VOSK SERVER), сессии, встроенные кнопки
+- Протестирован на чистом Ubuntu 24.04 VPS (1 vCPU, 1GB RAM)
+- Установщик обрабатывает: Node.js 20, Qwen CLI, Python venv, systemd, OAuth
+- Самообновление через команду /update (git pull + перезапуск из Telegram)
+- Самонастройка голоса через команду /setup (VOSK SERVER через чат)
 
-## Issues resolved during development
+## Проблемы, решённые в ходе разработки
 
-### Installer
-1. `curl|bash` breaks stdin → detect pipe, tell user to download first
-2. NodeSource setup_20.x deprecated on Ubuntu 24.04 → GPG key + manual repo
-3. Missing ca-certificates, gnupg → added to apt install
-4. `useradd -m` creates skeleton → git clone fails → removed -m flag
-5. pip install too slow, SSH drops → show progress, verify after install
-6. CRLF from Windows git → .gitattributes eol=lf + sed strip
-7. npm global bin not in PATH → always symlink to /usr/local/bin/
-8. .env world-readable → chmod 600
-9. git pull as root in qwenbot-owned dir → safe.directory
+### Установщик
+1. `curl|bash` ломает stdin → обнаружение pipe, просьба пользователю сначала скачать
+2. NodeSource setup_20.x устарел на Ubuntu 24.04 → GPG-ключ + ручной репозиторий
+3. Отсутствовали ca-certificates, gnupg → добавлены в apt install
+4. `useradd -m` создаёт скелет → git clone падает → убран флаг -m
+5. pip install слишком медленный, SSH обрывается → показ прогресса, проверка после установки
+6. CRLF из Windows git → .gitattributes eol=lf + sed strip
+7. npm global bin не в PATH → всегда symlink в /usr/local/bin/
+8. .env читаем всеми → chmod 600
+9. git pull от root в директории qwenbot → safe.directory
 
 ### Qwen CLI
-1. `--max-turns` flag doesn't exist → removed
-2. `--auth-type qwen-oauth` required for non-interactive mode
-3. `qwen auth qwen-oauth` (not `auth login --auth-type`)
-4. JSON output is array `[{...}]` not line-by-line → rewrote parser
-5. OAuth on headless: works via device flow (prints URL, user opens in browser)
-6. OAuth needs 2 attempts: first to register, second to complete OAuth
+1. Флаг `--max-turns` не существует → убран
+2. `--auth-type qwen-oauth` требуется для неинтерактивного режима
+3. `qwen auth qwen-oauth` (не `auth login --auth-type`)
+4. JSON-вывод — массив `[{...}]`, не построчно → переписан парсер
+5. OAuth на headless: работает через device flow (печатает URL, пользователь открывает в браузере)
+6. OAuth требует 2 попытки: первая для регистрации, вторая для завершения OAuth
 
-### Architecture
-1. is_busy flag loses messages → in-memory queue (5 msg)
-2. Root + --yolo dangerous → dedicated qwenbot user + systemd sandbox
-3. Markdown breaks Telegram HTML → md_to_telegram_html() + fallback
+### Архитектура
+1. Флаг is_busy теряет сообщения → очередь в памяти (5 сообщ.)
+2. Root + --yolo опасно → выделенный пользователь qwenbot + песочница systemd
+3. Markdown ломает Telegram HTML → md_to_telegram_html() + fallback
 
-## Server requirements
-- 1 vCPU, 512MB-1GB RAM, 5-10GB disk
+## Требования к серверу
+- 1 vCPU, 512MB-1GB RAM, 5-10GB диск
 - Ubuntu 22.04+ / Debian 11+
-- No GPU needed (all AI is cloud-based)
+- GPU не нужен (весь AI — облачный)
 
-## Install command
+## Команда установки
 ```
 curl -fsSL https://raw.githubusercontent.com/a-prs/QwenClaw/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```

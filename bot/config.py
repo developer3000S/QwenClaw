@@ -21,8 +21,9 @@ QWEN_TIMEOUT = int(os.getenv("QWEN_TIMEOUT", "600"))
 # Working directory for Qwen Code
 WORK_DIR = Path(os.getenv("QWEN_WORK_DIR", str(PROJECT_ROOT / "workspace")))
 
-# Groq Whisper API (optional, for voice messages)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+# VOSK SERVER (optional, for voice messages)
+VOSK_SERVER_HOST = os.getenv("VOSK_SERVER_HOST", "")
+VOSK_SERVER_PORT = int(os.getenv("VOSK_SERVER_PORT", "2700"))
 
 # Database
 DB_PATH = PROJECT_ROOT / "data" / "bot.db"
@@ -52,8 +53,9 @@ def set_env_var(key: str, value: str):
     os.environ[key] = value
 
 
-def reload_groq_key():
-    """Reload GROQ_API_KEY from .env into module-level variable."""
-    global GROQ_API_KEY
+def reload_vosk_config():
+    """Reload VOSK_SERVER config from .env into module-level variables."""
+    global VOSK_SERVER_HOST, VOSK_SERVER_PORT
     load_dotenv(ENV_PATH, override=True)
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    VOSK_SERVER_HOST = os.getenv("VOSK_SERVER_HOST", "")
+    VOSK_SERVER_PORT = int(os.getenv("VOSK_SERVER_PORT", "2700"))

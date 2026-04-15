@@ -13,7 +13,7 @@ StartLimitIntervalSec=300
 StartLimitBurst=5
 Environment=PYTHONUNBUFFERED=1
 Environment=HOME=/opt/qwenbot
-Environment=PATH=/usr/local/bin:/usr/bin:/bin:/opt/qwenbot/.local/bin
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/opt/qwenbot/.local/bin:/usr/sbin
 
 TimeoutStopSec=30
 

@@ -20,6 +20,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 import config
 from config import BOT_TOKEN, ADMIN_CHAT_ID, MESSAGE_QUEUE_MAX
+from config import reload_vosk_config
 from db import (
     init_db,
     create_session,
@@ -49,7 +50,7 @@ dp = Dispatcher()
 user_focus: dict[int, str] = {}  # chat_id -> session_id
 
 # Track pending setup state
-_awaiting_setup: dict[int, str] = {}  # chat_id -> what we're waiting for (e.g. "groq_key")
+_awaiting_setup: dict[int, str] = {}  # chat_id -> what we're waiting for (e.g. "vosk_host")
 
 SESSIONS_PER_PAGE = 5
 
@@ -139,7 +140,7 @@ async def extract_text(message: Message) -> tuple[str | None, str | None]:
         voice_obj = message.voice or message.audio
         transcript = await transcribe_voice(voice_obj, bot)
         if transcript is None:
-            return None, None  # Groq not configured
+            return None, None  # VOSK not configured
         return transcript, image_path
 
     if message.caption:
@@ -158,7 +159,7 @@ async def cmd_start(message: Message):
     if not is_admin(message):
         return
 
-    voice_status = "\u2705 Groq" if config.GROQ_API_KEY else "\u274c /setup"
+    voice_status = "\u2705 VOSK" if config.VOSK_SERVER_HOST else "\u274c /setup"
     await message.reply(
         f"\ud83e\udd16 <b>QwenClaw</b> \u2014 \u0442\u0432\u043e\u0439 AI-\u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\n\n"
         f"Qwen Code \u2014 1000 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0445 \u0437\u0430\u043f\u0440\u043e\u0441\u043e\u0432/\u0434\u0435\u043d\u044c\n"
@@ -309,14 +310,14 @@ async def cmd_setup(message: Message):
         return
 
     buttons = []
-    if not config.GROQ_API_KEY:
-        buttons.append([InlineKeyboardButton(text="\ud83c\udf99 \u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c Groq \u043a\u043b\u044e\u0447 (\u0433\u043e\u043b\u043e\u0441)", callback_data="setup:groq")])
+    if not config.VOSK_SERVER_HOST:
+        buttons.append([InlineKeyboardButton(text="\ud83c\udf99 \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c VOSK (\u0433\u043e\u043b\u043e\u0441)", callback_data="setup:vosk")])
     else:
-        buttons.append([InlineKeyboardButton(text="\ud83d\udd04 \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c Groq \u043a\u043b\u044e\u0447", callback_data="setup:groq")])
+        buttons.append([InlineKeyboardButton(text="\ud83d\udd04 \u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c VOSK \u0441\u0435\u0440\u0432\u0435\u0440", callback_data="setup:vosk")])
 
     buttons.append([InlineKeyboardButton(text="\ud83c\udfe0 \u041c\u0435\u043d\u044e", callback_data="menu")])
 
-    voice_status = "on" if config.GROQ_API_KEY else "off"
+    voice_status = f"on ({config.VOSK_SERVER_HOST}:{config.VOSK_SERVER_PORT})" if config.VOSK_SERVER_HOST else "off"
     await message.reply(
         f"<b>Setup</b>\n\nVoice messages: {voice_status}",
         parse_mode=ParseMode.HTML,
@@ -324,17 +325,16 @@ async def cmd_setup(message: Message):
     )
 
 
-@dp.callback_query(F.data == "setup:groq")
-async def cb_setup_groq(callback: CallbackQuery):
+@dp.callback_query(F.data == "setup:vosk")
+async def cb_setup_vosk(callback: CallbackQuery):
     if not is_admin_cb(callback):
         return
-    _awaiting_setup[callback.message.chat.id] = "groq_key"
+    _awaiting_setup[callback.message.chat.id] = "vosk_host"
     await callback.message.edit_text(
-        "<b>Groq API key setup</b>\n\n"
-        "1. Go to https://console.groq.com/keys\n"
-        "2. Create a free API key\n"
-        "3. Send it here\n\n"
-        "The key looks like: <code>gsk_...</code>",
+        "<b>VOSK SERVER setup</b>\n\n"
+        "Enter VOSK SERVER host and port in format:\n"
+        "<code>127.0.0.1:2700</code>\n\n"
+        "Or just <code>Enter</code> to use default: <code>127.0.0.1:2700</code>",
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="\u274c \u041e\u0442\u043c\u0435\u043d\u0430", callback_data="setup:cancel")],
@@ -540,23 +540,39 @@ async def handle_message(message: Message):
 
     # 0. Check if we're awaiting setup input
     setup_state = _awaiting_setup.get(message.chat.id)
-    if setup_state == "groq_key" and message.text:
-        key = message.text.strip()
-        if key.startswith("gsk_") and len(key) > 20:
-            config.set_env_var("GROQ_API_KEY", key)
-            config.reload_groq_key()
-            _awaiting_setup.pop(message.chat.id, None)
-            await message.reply(
-                "Groq API key saved. Voice messages enabled.\n"
-                "Send a voice message to test.",
-                reply_markup=build_main_menu(),
-            )
+    if setup_state == "vosk_host" and message.text:
+        text_input = message.text.strip()
+        if not text_input or text_input.lower() == "enter":
+            # Use defaults
+            config.set_env_var("VOSK_SERVER_HOST", "127.0.0.1")
+            config.set_env_var("VOSK_SERVER_PORT", "2700")
         else:
-            await message.reply(
-                "Invalid key. It should start with <code>gsk_</code>\n"
-                "Try again or /setup to cancel.",
-                parse_mode=ParseMode.HTML,
-            )
+            # Parse host:port
+            if ":" in text_input:
+                host, port_str = text_input.rsplit(":", 1)
+                try:
+                    port = int(port_str)
+                    config.set_env_var("VOSK_SERVER_HOST", host)
+                    config.set_env_var("VOSK_SERVER_PORT", str(port))
+                except ValueError:
+                    await message.reply(
+                        "Invalid port number. Use format: <code>127.0.0.1:2700</code>",
+                        parse_mode=ParseMode.HTML,
+                    )
+                    return
+            else:
+                # Just host, use default port
+                config.set_env_var("VOSK_SERVER_HOST", text_input)
+                config.set_env_var("VOSK_SERVER_PORT", "2700")
+
+        config.reload_vosk_config()
+        _awaiting_setup.pop(message.chat.id, None)
+        await message.reply(
+            f"VOSK SERVER configured: {config.VOSK_SERVER_HOST}:{config.VOSK_SERVER_PORT}\n"
+            "Voice messages enabled.\n"
+            "Send a voice message to test.",
+            reply_markup=build_main_menu(),
+        )
         return
 
     # 1. Extract text and optional image
@@ -564,8 +580,8 @@ async def handle_message(message: Message):
 
     if text is None and (message.voice or message.audio):
         await message.reply(
-            "\ud83c\udf99 \u0413\u043e\u043b\u043e\u0441\u043e\u0432\u044b\u0435 \u0442\u0440\u0435\u0431\u0443\u044e\u0442 Groq API \u043a\u043b\u044e\u0447.\n"
-            "\u0417\u0430\u043f\u0443\u0441\u0442\u0438 /setup (\u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e, 1 \u043c\u0438\u043d\u0443\u0442\u0430).",
+            "\ud83c\udf99 \u0413\u043e\u043b\u043e\u0441\u043e\u0432\u044b\u0435 \u0442\u0440\u0435\u0431\u0443\u044e\u0442 VOSK SERVER.\n"
+            "\u0417\u0430\u043f\u0443\u0441\u0442\u0438 /setup \u0434\u043b\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438.",
         )
         return
 
@@ -725,7 +741,7 @@ async def _send_status(chat_id: int, edit_message=None):
     else:
         text += f"Current: <i>none</i>\n"
 
-    voice_status = "on (Groq)" if config.GROQ_API_KEY else "off"
+    voice_status = f"on (VOSK)" if config.VOSK_SERVER_HOST else "off"
     schedules = _load_schedules()
     active_schedules = [s for s in schedules if s.get("enabled", True)]
     text += f"Voice: {voice_status}\n"
@@ -768,7 +784,7 @@ async def main():
     await setup_bot_commands()
     logger.info("QwenBot starting...")
     logger.info(f"Admin chat ID: {ADMIN_CHAT_ID}")
-    logger.info(f"Voice: {'Groq' if config.GROQ_API_KEY else 'disabled'}")
+    logger.info(f"Voice: {'VOSK' if config.VOSK_SERVER_HOST else 'disabled'}")
 
     # Start scheduler in background
     asyncio.create_task(run_scheduler(
